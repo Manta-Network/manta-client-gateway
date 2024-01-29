@@ -1,11 +1,11 @@
-import { TransactionApiManager } from './transaction-api.manager';
 import { IConfigurationService } from '@/config/configuration.service.interface';
-import { IConfigApi } from '@/domain/interfaces/config-api.interface';
-import { ICacheService } from '../cache/cache.service.interface';
-import { INetworkService } from '../network/network.service.interface';
-import { CacheFirstDataSource } from '../cache/cache.first.data.source';
-import { HttpErrorFactory } from '../errors/http-error-factory';
+import { CacheFirstDataSource } from '@/datasources/cache/cache.first.data.source';
+import { ICacheService } from '@/datasources/cache/cache.service.interface';
+import { HttpErrorFactory } from '@/datasources/errors/http-error-factory';
+import { INetworkService } from '@/datasources/network/network.service.interface';
+import { TransactionApiManager } from '@/datasources/transaction-api/transaction-api.manager';
 import { chainBuilder } from '@/domain/chains/entities/__tests__/chain.builder';
+import { IConfigApi } from '@/domain/interfaces/config-api.interface';
 import { faker } from '@faker-js/faker';
 
 const configurationService = {
@@ -54,7 +54,6 @@ describe('Transaction API Manager Tests', () => {
       .build();
     const expirationTimeInSeconds = faker.number.int();
     const notFoundExpireTimeSeconds = faker.number.int();
-    const messagesCache = faker.datatype.boolean();
     configurationServiceMock.getOrThrow.mockImplementation((key) => {
       if (key === 'safeTransaction.useVpcUrl') return useVpcUrl;
       else if (key === 'expirationTimeInSeconds.default')
@@ -65,7 +64,6 @@ describe('Transaction API Manager Tests', () => {
         return notFoundExpireTimeSeconds;
       else if (key === 'expirationTimeInSeconds.notFound.token')
         return notFoundExpireTimeSeconds;
-      else if (key === 'features.messagesCache') return messagesCache;
       throw new Error(`Unexpected key: ${key}`);
     });
     configApiMock.getChain.mockResolvedValue(chain);
@@ -81,7 +79,7 @@ describe('Transaction API Manager Tests', () => {
     const transactionApi = await target.getTransactionApi(chain.chainId);
     await transactionApi.getBackbone();
 
-    expect(dataSourceMock.get).toBeCalledWith({
+    expect(dataSourceMock.get).toHaveBeenCalledWith({
       cacheDir: expect.anything(),
       url: `${expectedUrl}/api/v1/about`,
       notFoundExpireTimeSeconds: notFoundExpireTimeSeconds,

@@ -1,12 +1,17 @@
-import { HttpStatus, Injectable, PipeTransform } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  PipeTransform,
+} from '@nestjs/common';
 import { ValidateFunction } from 'ajv';
-import { GenericValidator } from '@/validation/providers/generic.validator';
-import { JsonSchemaService } from '@/validation/providers/json-schema.service';
-import { GetDelegateDto } from '../entities/get-delegate.dto.entity';
+import { GetDelegateDto } from '@/routes/delegates/entities/get-delegate.dto.entity';
 import {
   GET_DELEGATE_DTO_SCHEMA_ID,
   getDelegateDtoSchema,
-} from '../entities/schemas/get-delegate.dto.schema';
+} from '@/routes/delegates/entities/schemas/get-delegate.dto.schema';
+import { GenericValidator } from '@/validation/providers/generic.validator';
+import { JsonSchemaService } from '@/validation/providers/json-schema.service';
 
 @Injectable()
 export class GetDelegateDtoValidationPipe
@@ -27,7 +32,9 @@ export class GetDelegateDtoValidationPipe
     try {
       return this.genericValidator.validate(this.isValid, data);
     } catch (err) {
-      err.status = HttpStatus.BAD_REQUEST;
+      if (err instanceof HttpException) {
+        throw new HttpException(err.getResponse(), HttpStatus.BAD_REQUEST);
+      }
       throw err;
     }
   }

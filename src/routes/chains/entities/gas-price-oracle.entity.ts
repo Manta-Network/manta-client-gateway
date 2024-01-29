@@ -1,13 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { GasPriceOracle as DomainGasPriceOracle } from '../../../domain/chains/entities/gas-price-oracle.entity';
+import { GasPriceOracle as DomainGasPriceOracle } from '@/domain/chains/entities/gas-price-oracle.entity';
 
 export class GasPriceOracle implements DomainGasPriceOracle {
   @ApiProperty()
-  type: 'oracle';
+  type!: 'oracle';
   @ApiProperty()
-  gasParameter: string;
+  gasParameter!: string;
   @ApiProperty()
-  gweiFactor: string;
+  gweiFactor!: string;
   @ApiProperty()
-  uri: string;
+  uri!: string;
 }

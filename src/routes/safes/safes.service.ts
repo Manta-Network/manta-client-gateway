@@ -1,19 +1,24 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { ISafeRepository } from '@/domain/safe/safe.repository.interface';
-import { MasterCopyVersionState, SafeState } from './entities/safe-info.entity';
-import { IChainsRepository } from '@/domain/chains/chains.repository.interface';
+import { max } from 'lodash';
 import * as semver from 'semver';
-import { MasterCopy } from '@/domain/chains/entities/master-copies.entity';
-import { Safe } from '@/domain/safe/entities/safe.entity';
-import { AddressInfoHelper } from '../common/address-info/address-info.helper';
-import { AddressInfo } from '../common/entities/address-info.entity';
-import { NULL_ADDRESS } from '../common/constants';
+import { IChainsRepository } from '@/domain/chains/chains.repository.interface';
+import { Singleton } from '@/domain/chains/entities/singleton.entity';
 import { MessagesRepository } from '@/domain/messages/messages.repository';
 import { IMessagesRepository } from '@/domain/messages/messages.repository.interface';
-import { max } from 'lodash';
-import { MultisigTransaction } from '@/domain/safe/entities/multisig-transaction.entity';
 import { ModuleTransaction } from '@/domain/safe/entities/module-transaction.entity';
+import { MultisigTransaction } from '@/domain/safe/entities/multisig-transaction.entity';
+import { Safe } from '@/domain/safe/entities/safe.entity';
 import { Transfer } from '@/domain/safe/entities/transfer.entity';
+import { ISafeRepository } from '@/domain/safe/safe.repository.interface';
+import { AddressInfoHelper } from '@/routes/common/address-info/address-info.helper';
+import { NULL_ADDRESS } from '@/routes/common/constants';
+import { AddressInfo } from '@/routes/common/entities/address-info.entity';
+import {
+  MasterCopyVersionState,
+  SafeState,
+} from '@/routes/safes/entities/safe-info.entity';
+import { SafeNonces } from '@/routes/safes/entities/nonces.entity';
+import { Page } from '@/domain/entities/page.entity';
 
 @Injectable()
 export class SafesService {
@@ -31,20 +36,20 @@ export class SafesService {
     chainId: string;
     safeAddress: string;
   }): Promise<SafeState> {
-    const [safe, { recommendedMasterCopyVersion }, supportedMasterCopies] =
+    const [safe, { recommendedMasterCopyVersion }, supportedSingletons] =
       await Promise.all([
         this.safeRepository.getSafe({
           chainId: args.chainId,
           address: args.safeAddress,
         }),
         this.chainsRepository.getChain(args.chainId),
-        this.chainsRepository.getMasterCopies(args.chainId),
+        this.chainsRepository.getSingletons(args.chainId),
       ]);
 
     const versionState = this.computeVersionState(
       safe,
       recommendedMasterCopyVersion,
-      supportedMasterCopies,
+      supportedSingletons,
     );
 
     const [
@@ -95,10 +100,10 @@ export class SafesService {
       safe.owners.map((ownerAddress) => new AddressInfo(ownerAddress)),
       masterCopyInfo,
       versionState,
-      this.toUnixTimestampInSecondsOrNow(collectiblesTag).toString(),
-      this.toUnixTimestampInSecondsOrNow(queuedTransactionTag).toString(),
-      this.toUnixTimestampInSecondsOrNow(transactionHistoryTag).toString(),
-      this.toUnixTimestampInSecondsOrNow(messagesTag).toString(),
+      this.toUnixTimestampInSecondsOrNull(collectiblesTag),
+      this.toUnixTimestampInSecondsOrNull(queuedTransactionTag),
+      this.toUnixTimestampInSecondsOrNull(transactionHistoryTag),
+      this.toUnixTimestampInSecondsOrNull(messagesTag),
       moduleAddressesInfo,
       fallbackHandlerInfo,
       guardInfo,
@@ -106,38 +111,47 @@ export class SafesService {
     );
   }
 
-  private toUnixTimestampInSecondsOrNow(date: Date | null): number {
-    const dateValue = date ? date.valueOf() : Date.now();
-    return Math.floor(dateValue / 1000);
+  public async getNonces(args: {
+    chainId: string;
+    safeAddress: string;
+  }): Promise<SafeNonces> {
+    const nonce = await this.safeRepository.getNonces(args);
+    return new SafeNonces(nonce);
+  }
+
+  private toUnixTimestampInSecondsOrNull(date: Date | null): string | null {
+    return date ? Math.floor(date.valueOf() / 1000).toString() : null;
   }
 
   private async getCollectiblesTag(
     chainId: string,
     safeAddress: string,
   ): Promise<Date | null> {
-    const lastCollectibleTransfer =
-      await this.safeRepository.getCollectibleTransfers({
+    const lastCollectibleTransfer = await this.safeRepository
+      .getCollectibleTransfers({
         chainId,
         safeAddress,
         limit: 1,
         offset: 0,
-      });
+      })
+      .catch(() => null);
 
-    return lastCollectibleTransfer.results[0]?.executionDate ?? null;
+    return lastCollectibleTransfer?.results[0]?.executionDate ?? null;
   }
 
   private async getQueuedTransactionTag(
     chainId: string,
     safe: Safe,
   ): Promise<Date | null> {
-    const lastQueuedTransaction =
-      await this.safeRepository.getTransactionQueueByModified({
+    const lastQueuedTransaction = await this.safeRepository
+      .getTransactionQueueByModified({
         chainId,
         safe,
         limit: 1,
-      });
+      })
+      .catch(() => null);
 
-    return lastQueuedTransaction.results[0]?.modified ?? null;
+    return lastQueuedTransaction?.results[0]?.modified ?? null;
   }
 
   /**
@@ -155,7 +169,7 @@ export class SafesService {
     chainId: string,
     safeAddress: string,
   ): Promise<Date | null> {
-    const txPages = await Promise.all([
+    const txPages = await Promise.allSettled([
       this.safeRepository.getMultisigTransactions({
         chainId,
         safeAddress,
@@ -175,9 +189,18 @@ export class SafesService {
     ]);
 
     const dates = txPages
+      .filter(
+        (
+          page,
+        ): page is
+          | PromiseFulfilledResult<Page<MultisigTransaction>>
+          | PromiseFulfilledResult<Page<ModuleTransaction>>
+          | PromiseFulfilledResult<Page<Transfer>> =>
+          page.status === 'fulfilled',
+      )
       .flatMap(
-        ({ results }): (MultisigTransaction | ModuleTransaction | Transfer)[] =>
-          results,
+        ({ value }): (MultisigTransaction | ModuleTransaction | Transfer)[] =>
+          value.results,
       )
       .map((tx) => {
         const isMultisig = 'safeTxHash' in tx && tx.safeTxHash !== undefined;
@@ -210,17 +233,19 @@ export class SafesService {
   private computeVersionState(
     safe: Safe,
     recommendedSafeVersion: string,
-    supportedMasterCopies: MasterCopy[],
+    supportedSingletons: Singleton[],
   ): MasterCopyVersionState {
+    // If the safe version is null we return UNKNOWN
+    if (safe.version === null) return MasterCopyVersionState.UNKNOWN;
     // If the safe version or the recommended safe version is not valid we return UNKNOWN
     if (!semver.valid(safe.version)) return MasterCopyVersionState.UNKNOWN;
     if (!semver.valid(recommendedSafeVersion))
       return MasterCopyVersionState.UNKNOWN;
-    // If the master copy of this safe is not part of the collection
-    // of the supported master copies we return UNKNOWN
+    // If the singleton of this safe is not part of the collection
+    // of the supported singletons we return UNKNOWN
     if (
-      !supportedMasterCopies
-        .map((masterCopy) => masterCopy.address)
+      !supportedSingletons
+        .map((singleton) => singleton.address)
         .includes(safe.masterCopy)
     )
       return MasterCopyVersionState.UNKNOWN;

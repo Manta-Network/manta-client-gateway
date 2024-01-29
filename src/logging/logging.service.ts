@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ClsService } from 'nestjs-cls';
-import { ILoggingService } from './logging.interface';
 import { Inject } from '@nestjs/common/decorators';
+import { ClsService } from 'nestjs-cls';
 import winston from 'winston';
 import { IConfigurationService } from '@/config/configuration.service.interface';
+import { ILoggingService } from '@/logging/logging.interface';
 
 /**
  * Implementation of ILoggingService which prepends the current time and a unique request ID to every logged message.
@@ -25,23 +25,29 @@ export class RequestScopedLoggingService implements ILoggingService {
     this.buildNumber = configurationService.get('about.buildNumber');
   }
 
-  info(message: string | unknown) {
+  info(message: string | unknown): void {
     this.logger.log('info', this.formatMessage(message));
   }
 
-  error(message: string | unknown) {
+  error(message: string | unknown): void {
     this.logger.log('error', this.formatMessage(message));
   }
 
-  warn(message: string | unknown) {
+  warn(message: string | unknown): void {
     this.logger.log('warn', this.formatMessage(message));
   }
 
-  debug(message: string | unknown) {
+  debug(message: string | unknown): void {
     this.logger.log('debug', this.formatMessage(message));
   }
 
-  private formatMessage(message: string | unknown) {
+  private formatMessage(message: string | unknown): {
+    message: unknown;
+    build_number: string | undefined;
+    request_id: string;
+    timestamp: string;
+    version: string | undefined;
+  } {
     const requestId = this.cls.getId();
     const timestamp = Date.now();
     const dateAsString = new Date(timestamp).toISOString();

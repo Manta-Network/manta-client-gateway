@@ -1,6 +1,6 @@
-import { NestConfigurationService } from './nest.configuration.service';
-import { ConfigService } from '@nestjs/config';
+import { NestConfigurationService } from '@/config/nest.configuration.service';
 import { faker } from '@faker-js/faker';
+import { ConfigService } from '@nestjs/config';
 
 const configService = {
   get: jest.fn(),
@@ -23,9 +23,9 @@ describe('NestConfigurationService', () => {
 
     const result = target.get(key);
 
-    expect(configServiceMock.get).toBeCalledTimes(1);
-    expect(configServiceMock.get).toBeCalledWith(key);
-    expect(configServiceMock.getOrThrow).toBeCalledTimes(0);
+    expect(configServiceMock.get).toHaveBeenCalledTimes(1);
+    expect(configServiceMock.get).toHaveBeenCalledWith(key);
+    expect(configServiceMock.getOrThrow).toHaveBeenCalledTimes(0);
     expect(result).toBe(value);
   });
 
@@ -35,9 +35,9 @@ describe('NestConfigurationService', () => {
 
     const result = target.get(key);
 
-    expect(configServiceMock.get).toBeCalledTimes(1);
-    expect(configServiceMock.get).toBeCalledWith(key);
-    expect(configServiceMock.getOrThrow).toBeCalledTimes(0);
+    expect(configServiceMock.get).toHaveBeenCalledTimes(1);
+    expect(configServiceMock.get).toHaveBeenCalledWith(key);
+    expect(configServiceMock.getOrThrow).toHaveBeenCalledTimes(0);
     expect(result).toBe(undefined);
   });
 
@@ -48,9 +48,9 @@ describe('NestConfigurationService', () => {
 
     const result = target.getOrThrow(key);
 
-    expect(configServiceMock.getOrThrow).toBeCalledTimes(1);
-    expect(configServiceMock.getOrThrow).toBeCalledWith(key);
-    expect(configServiceMock.get).toBeCalledTimes(0);
+    expect(configServiceMock.getOrThrow).toHaveBeenCalledTimes(1);
+    expect(configServiceMock.getOrThrow).toHaveBeenCalledWith(key);
+    expect(configServiceMock.get).toHaveBeenCalledTimes(0);
     expect(result).toBe(value);
   });
 
@@ -64,8 +64,8 @@ describe('NestConfigurationService', () => {
       target.getOrThrow(key);
     }).toThrow('some error');
 
-    expect(configServiceMock.getOrThrow).toBeCalledTimes(1);
-    expect(configServiceMock.getOrThrow).toBeCalledWith(key);
-    expect(configServiceMock.get).toBeCalledTimes(0);
+    expect(configServiceMock.getOrThrow).toHaveBeenCalledTimes(1);
+    expect(configServiceMock.getOrThrow).toHaveBeenCalledWith(key);
+    expect(configServiceMock.get).toHaveBeenCalledTimes(0);
   });
 });

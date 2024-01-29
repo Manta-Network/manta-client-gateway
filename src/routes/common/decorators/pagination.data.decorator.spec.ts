@@ -1,17 +1,17 @@
-import { PaginationDataDecorator } from './pagination.data.decorator';
-import { PaginationData } from '../pagination/pagination.data';
 import { Controller, Get, INestApplication, Module } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as request from 'supertest';
+import { PaginationDataDecorator } from '@/routes/common/decorators/pagination.data.decorator';
+import { PaginationData } from '@/routes/common/pagination/pagination.data';
 
 describe('PaginationDataDecorator', () => {
   let app: INestApplication;
-  let paginationData;
+  let paginationData: PaginationData;
 
   @Controller()
   class TestController {
     @Get()
-    route(@PaginationDataDecorator() data: PaginationData) {
+    route(@PaginationDataDecorator() data: PaginationData): void {
       paginationData = data;
       return;
     }

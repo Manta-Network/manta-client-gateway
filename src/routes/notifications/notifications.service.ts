@@ -4,12 +4,11 @@ import {
   Injectable,
   InternalServerErrorException,
 } from '@nestjs/common';
-import { inRange } from 'lodash';
 import { Device } from '@/domain/notifications/entities/device.entity';
-import { SafeRegistration as DomainSafeRegistration } from '../../domain/notifications/entities/safe-registration.entity';
+import { SafeRegistration as DomainSafeRegistration } from '@/domain/notifications/entities/safe-registration.entity';
 import { INotificationsRepository } from '@/domain/notifications/notifications.repository.interface';
-import { RegisterDeviceDto } from './entities/register-device.dto.entity';
-import { SafeRegistration } from './entities/safe-registration.entity';
+import { RegisterDeviceDto } from '@/routes/notifications/entities/register-device.dto.entity';
+import { SafeRegistration } from '@/routes/notifications/entities/safe-registration.entity';
 
 @Injectable()
 export class NotificationsService {
@@ -105,7 +104,9 @@ export class NotificationsService {
     result: PromiseSettledResult<DomainSafeRegistration>,
   ): boolean {
     return (
-      result.status === 'rejected' && inRange(result.reason?.code, 500, 600)
+      result.status === 'rejected' &&
+      result.reason?.code >= 500 &&
+      result.reason?.code < 600
     );
   }
 
@@ -113,7 +114,9 @@ export class NotificationsService {
     result: PromiseSettledResult<DomainSafeRegistration>,
   ): boolean {
     return (
-      result.status === 'rejected' && inRange(result.reason?.code, 400, 500)
+      result.status === 'rejected' &&
+      result.reason?.code >= 400 &&
+      result.reason?.code < 500
     );
   }
 

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Page as DomainPage } from '../../../domain/entities/page.entity';
+import { Page as DomainPage } from '@/domain/entities/page.entity';
 
 /**
  * The SwaggerModule cannot generate model definitions based on Generics
@@ -16,13 +16,13 @@ import { Page as DomainPage } from '../../../domain/entities/page.entity';
  */
 export abstract class Page<T> implements DomainPage<T> {
   @ApiProperty()
-  count: number;
+  count!: number;
   // ApiPropertyOptional without any options
   // does not work with unions with null
   // see https://github.com/nestjs/swagger/issues/2129
   @ApiPropertyOptional({ type: String, nullable: true })
-  next: string | null;
+  next!: string | null;
   @ApiPropertyOptional({ type: String, nullable: true })
-  previous: string | null;
+  previous!: string | null;
   abstract results: T[];
 }

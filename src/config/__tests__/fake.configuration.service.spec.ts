@@ -1,4 +1,4 @@
-import { FakeConfigurationService } from './fake.configuration.service';
+import { FakeConfigurationService } from '@/config/__tests__/fake.configuration.service';
 
 describe('FakeConfigurationService', () => {
   let configurationService: FakeConfigurationService;
@@ -27,7 +27,7 @@ describe('FakeConfigurationService', () => {
   it(`Retrieving unknown key should throw`, async () => {
     configurationService.set('aaa', 'bbb');
 
-    const result = () => {
+    const result = (): void => {
       configurationService.getOrThrow('unknown_key');
     };
 

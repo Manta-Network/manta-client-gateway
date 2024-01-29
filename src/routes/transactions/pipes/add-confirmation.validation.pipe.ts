@@ -1,12 +1,17 @@
-import { HttpStatus, Injectable, PipeTransform } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  PipeTransform,
+} from '@nestjs/common';
 import { ValidateFunction } from 'ajv';
 import { GenericValidator } from '@/validation/providers/generic.validator';
 import { JsonSchemaService } from '@/validation/providers/json-schema.service';
-import { AddConfirmationDto } from '../entities/add-confirmation.dto';
 import {
   ADD_CONFIRMATION_DTO_SCHEMA_ID,
   addConfirmationDtoSchema,
-} from '../entities/schemas/add-confirmation.dto.schema';
+} from '@/routes/transactions/entities/schemas/add-confirmation.dto.schema';
+import { AddConfirmationDto } from '@/routes/transactions/entities/add-confirmation.dto';
 
 @Injectable()
 export class AddConfirmationDtoValidationPipe
@@ -27,7 +32,9 @@ export class AddConfirmationDtoValidationPipe
     try {
       return this.genericValidator.validate(this.isValid, data);
     } catch (err) {
-      err.status = HttpStatus.BAD_REQUEST;
+      if (err instanceof HttpException) {
+        throw new HttpException(err.getResponse(), HttpStatus.BAD_REQUEST);
+      }
       throw err;
     }
   }

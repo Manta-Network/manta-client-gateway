@@ -1,6 +1,6 @@
 import { JSONSchemaType, Schema } from 'ajv';
-import { buildPageSchema } from '../../../entities/schemas/page.schema.factory';
-import { Token, TokenType } from '../token.entity';
+import { buildPageSchema } from '@/domain/entities/schemas/page.schema.factory';
+import { Token, TokenType } from '@/domain/tokens/entities/token.entity';
 
 export const TOKEN_SCHEMA_ID =
   'https://safe-client.safe.global/schemas/tokens/token.json';
@@ -15,8 +15,17 @@ export const tokenSchema: JSONSchemaType<Token> = {
     name: { type: 'string' },
     symbol: { type: 'string' },
     type: { type: 'string', enum: Object.values(TokenType) },
+    trusted: { type: 'boolean' },
   },
-  required: ['address', 'decimals', 'logoUri', 'name', 'symbol', 'type'],
+  required: [
+    'address',
+    'decimals',
+    'logoUri',
+    'name',
+    'symbol',
+    'type',
+    'trusted',
+  ],
 };
 
 export const TOKEN_PAGE_SCHEMA_ID =

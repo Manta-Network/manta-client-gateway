@@ -1,9 +1,9 @@
-import { Collectible } from '../collectible.entity';
 import { faker } from '@faker-js/faker';
 import { Builder, IBuilder } from '@/__tests__/builder';
+import { Collectible } from '@/domain/collectibles/entities/collectible.entity';
 
 export function collectibleBuilder(): IBuilder<Collectible> {
-  return Builder.new<Collectible>()
+  return new Builder<Collectible>()
     .with('address', faker.finance.ethereumAddress())
     .with('tokenName', faker.company.name())
     .with('tokenSymbol', faker.finance.currencySymbol())

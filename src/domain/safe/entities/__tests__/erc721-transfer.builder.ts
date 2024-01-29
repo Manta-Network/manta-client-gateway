@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { Builder, IBuilder } from '@/__tests__/builder';
-import { ERC721Transfer } from '../transfer.entity';
+import { ERC721Transfer } from '@/domain/safe/entities/transfer.entity';
 
 export function erc721TransferBuilder(): IBuilder<ERC721Transfer> {
-  return Builder.new<ERC721Transfer>()
+  return new Builder<ERC721Transfer>()
     .with('blockNumber', faker.number.int())
     .with('executionDate', faker.date.recent())
     .with('from', faker.finance.ethereumAddress())

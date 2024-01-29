@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { Builder, IBuilder } from '@/__tests__/builder';
-import { ERC20Transfer } from '../transfer.entity';
+import { ERC20Transfer } from '@/domain/safe/entities/transfer.entity';
 
 export function erc20TransferBuilder(): IBuilder<ERC20Transfer> {
-  return Builder.new<ERC20Transfer>()
+  return new Builder<ERC20Transfer>()
     .with('blockNumber', faker.number.int())
     .with('executionDate', faker.date.recent())
     .with('from', faker.finance.ethereumAddress())

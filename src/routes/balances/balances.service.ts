@@ -1,86 +1,60 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { Balance as TransactionApiBalance } from '../../domain/balances/entities/balance.entity';
-import { Token } from './entities/token.entity';
-import { TokenType } from './entities/token-type.entity';
-import { Balances } from './entities/balances.entity';
-import { NativeCurrency } from '@/domain/chains/entities/native.currency.entity';
-import { Balance } from './entities/balance.entity';
 import { IBalancesRepository } from '@/domain/balances/balances.repository.interface';
-import { IExchangeRepository } from '@/domain/exchange/exchange.repository.interface';
+import { Balance as DomainBalance } from '@/domain/balances/entities/balance.entity';
 import { IChainsRepository } from '@/domain/chains/chains.repository.interface';
-import { NULL_ADDRESS } from '../common/constants';
+import { NativeCurrency } from '@/domain/chains/entities/native.currency.entity';
+import { Balance } from '@/routes/balances/entities/balance.entity';
+import { Balances } from '@/routes/balances/entities/balances.entity';
+import { TokenType } from '@/routes/balances/entities/token-type.entity';
+import { NULL_ADDRESS } from '@/routes/common/constants';
+import { orderBy } from 'lodash';
+import { IPricesRepository } from '@/domain/prices/prices.repository.interface';
+import { getNumberString } from '@/domain/common/utils/utils';
 
 @Injectable()
 export class BalancesService {
-  static readonly fromRateCurrencyCode: string = 'USD';
-
   constructor(
     @Inject(IBalancesRepository)
     private readonly balancesRepository: IBalancesRepository,
     @Inject(IChainsRepository)
     private readonly chainsRepository: IChainsRepository,
-    @Inject(IExchangeRepository)
-    private readonly exchangeRepository: IExchangeRepository,
+    @Inject(IPricesRepository)
+    private readonly pricesRepository: IPricesRepository,
   ) {}
-
-  getNumberString(value: number): string {
-    // Prevent scientific notation
-    return value.toLocaleString('fullwide', {
-      useGrouping: false,
-    });
-  }
 
   async getBalances(args: {
     chainId: string;
     safeAddress: string;
     fiatCode: string;
-    trusted?: boolean;
-    excludeSpam?: boolean;
+    trusted: boolean;
+    excludeSpam: boolean;
   }): Promise<Balances> {
-    const txServiceBalances = await this.balancesRepository.getBalances(args);
-
-    const usdToFiatRate: number = await this.exchangeRepository.convertRates({
-      to: args.fiatCode,
-      from: BalancesService.fromRateCurrencyCode,
-    });
-    const nativeCurrency: NativeCurrency = (
-      await this.chainsRepository.getChain(args.chainId)
-    ).nativeCurrency;
-
-    // Map balances payload
-    const balances: Balance[] = txServiceBalances.map((balance) =>
-      this.mapBalance(balance, usdToFiatRate, nativeCurrency),
+    const { chainId } = args;
+    const domainBalances = await this.balancesRepository.getBalances(args);
+    const { nativeCurrency } = await this.chainsRepository.getChain(chainId);
+    const balances: Balance[] = await Promise.all(
+      domainBalances.map(async (b) => this._mapBalance(b, nativeCurrency)),
     );
+    const fiatTotal = balances
+      .filter((b) => b.fiatBalance !== null)
+      .reduce((acc, b) => acc + Number(b.fiatBalance), 0);
 
-    // Get total fiat from [balances]
-    const totalFiat: number = balances.reduce((acc, b) => {
-      return acc + Number(b.fiatBalance);
-    }, 0);
-
-    // Sort balances in place
-    balances.sort((b1, b2) => {
-      return Number(b2.fiatBalance) - Number(b1.fiatBalance);
-    });
-
-    return <Balances>{
-      fiatTotal: this.getNumberString(totalFiat),
-      items: balances,
+    return {
+      fiatTotal: getNumberString(fiatTotal),
+      items: orderBy(balances, (b) => Number(b.fiatBalance), 'desc'),
     };
   }
 
-  private mapBalance(
-    txBalance: TransactionApiBalance,
-    usdToFiatRate: number,
+  private async _mapBalance(
+    balance: DomainBalance,
     nativeCurrency: NativeCurrency,
-  ): Balance {
-    const fiatConversion = Number(txBalance.fiatConversion) * usdToFiatRate;
-    const fiatBalance = Number(txBalance.fiatBalance) * usdToFiatRate;
-    const tokenAddress = txBalance.tokenAddress ?? NULL_ADDRESS;
+  ): Promise<Balance> {
+    const tokenAddress = balance.tokenAddress;
     const tokenType =
-      tokenAddress === NULL_ADDRESS ? TokenType.NativeToken : TokenType.Erc20;
+      tokenAddress === null ? TokenType.NativeToken : TokenType.Erc20;
 
     const tokenMetaData =
-      tokenType === TokenType.NativeToken
+      tokenAddress === null
         ? {
             decimals: nativeCurrency.decimals,
             symbol: nativeCurrency.symbol,
@@ -88,30 +62,25 @@ export class BalancesService {
             logoUri: nativeCurrency.logoUri,
           }
         : {
-            decimals: txBalance.token?.decimals,
-            symbol: txBalance.token?.symbol,
-            name: txBalance.token?.name,
-            logoUri: txBalance.token?.logoUri,
+            decimals: balance.token.decimals,
+            symbol: balance.token.symbol,
+            name: balance.token.name,
+            logoUri: balance.token.logoUri,
           };
 
-    return <Balance>{
-      tokenInfo: <Token>{
+    return {
+      tokenInfo: {
         type: tokenType,
-        address: tokenAddress,
+        address: tokenAddress ?? NULL_ADDRESS,
         ...tokenMetaData,
       },
-      balance: txBalance.balance,
-      fiatBalance: this.getNumberString(fiatBalance),
-      fiatConversion: this.getNumberString(fiatConversion),
+      balance: balance.balance,
+      fiatBalance: balance.fiatBalance ?? '0',
+      fiatConversion: balance.fiatConversion ?? '0',
     };
   }
 
   async getSupportedFiatCodes(): Promise<string[]> {
-    const fiatCodes: string[] = await this.exchangeRepository.getFiatCodes();
-    const mainCurrencies: string[] = ['USD', 'EUR'];
-    return [
-      ...mainCurrencies,
-      ...fiatCodes.filter((item) => !mainCurrencies.includes(item)).sort(),
-    ];
+    return this.pricesRepository.getFiatCodes();
   }
 }

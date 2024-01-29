@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
 import { Builder, IBuilder } from '@/__tests__/builder';
-import { CreateDelegateDto } from '../create-delegate.dto.entity';
+import { CreateDelegateDto } from '@/routes/delegates/entities/create-delegate.dto.entity';
 
 export function createDelegateDtoBuilder(): IBuilder<CreateDelegateDto> {
-  return Builder.new<CreateDelegateDto>()
+  return new Builder<CreateDelegateDto>()
     .with('safe', faker.finance.ethereumAddress())
     .with('delegate', faker.finance.ethereumAddress())
     .with('delegator', faker.finance.ethereumAddress())

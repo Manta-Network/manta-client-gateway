@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   DefaultValuePipe,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -11,29 +12,31 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiOkResponse, ApiQuery, ApiTags } from '@nestjs/swagger';
-import { PaginationDataDecorator } from '../common/decorators/pagination.data.decorator';
-import { RouteUrlDecorator } from '../common/decorators/route.url.decorator';
-import { Page } from '../common/entities/page.entity';
-import { PaginationData } from '../common/pagination/pagination.data';
-import { AddConfirmationDto } from './entities/add-confirmation.dto';
-import { IncomingTransferPage } from './entities/incoming-transfer-page.entity';
-import { IncomingTransfer } from './entities/incoming-transfer.entity';
-import { ModuleTransactionPage } from './entities/module-transaction-page.entity';
-import { ModuleTransaction } from './entities/module-transaction.entity';
-import { MultisigTransactionPage } from './entities/multisig-transaction-page.entity';
-import { MultisigTransaction } from './entities/multisig-transaction.entity';
-import { PreviewTransactionDto } from './entities/preview-transaction.dto.entity';
-import { QueuedItemPage } from './entities/queued-item-page.entity';
-import { QueuedItem } from './entities/queued-item.entity';
-import { TransactionItemPage } from './entities/transaction-item-page.entity';
-import { TransactionPreview } from './entities/transaction-preview.entity';
-import { PreviewTransactionDtoValidationPipe } from './pipes/preview-transaction.validation.pipe';
-import { ProposeTransactionDto } from './entities/propose-transaction.dto.entity';
-import { ProposeTransactionDtoValidationPipe } from './pipes/propose-transaction.dto.validation.pipe';
-import { AddConfirmationDtoValidationPipe } from './pipes/add-confirmation.validation.pipe';
-import { TransactionsService } from './transactions.service';
-import { Transaction } from './entities/transaction.entity';
-import { TransactionDetails } from './entities/transaction-details/transaction-details.entity';
+import { PaginationDataDecorator } from '@/routes/common/decorators/pagination.data.decorator';
+import { RouteUrlDecorator } from '@/routes/common/decorators/route.url.decorator';
+import { Page } from '@/routes/common/entities/page.entity';
+import { PaginationData } from '@/routes/common/pagination/pagination.data';
+import { AddConfirmationDto } from '@/routes/transactions/entities/add-confirmation.dto';
+import { IncomingTransferPage } from '@/routes/transactions/entities/incoming-transfer-page.entity';
+import { IncomingTransfer } from '@/routes/transactions/entities/incoming-transfer.entity';
+import { ModuleTransactionPage } from '@/routes/transactions/entities/module-transaction-page.entity';
+import { ModuleTransaction } from '@/routes/transactions/entities/module-transaction.entity';
+import { MultisigTransactionPage } from '@/routes/transactions/entities/multisig-transaction-page.entity';
+import { MultisigTransaction } from '@/routes/transactions/entities/multisig-transaction.entity';
+import { PreviewTransactionDto } from '@/routes/transactions/entities/preview-transaction.dto.entity';
+import { ProposeTransactionDto } from '@/routes/transactions/entities/propose-transaction.dto.entity';
+import { QueuedItemPage } from '@/routes/transactions/entities/queued-item-page.entity';
+import { QueuedItem } from '@/routes/transactions/entities/queued-item.entity';
+import { TransactionDetails } from '@/routes/transactions/entities/transaction-details/transaction-details.entity';
+import { TransactionItemPage } from '@/routes/transactions/entities/transaction-item-page.entity';
+import { TransactionPreview } from '@/routes/transactions/entities/transaction-preview.entity';
+import { Transaction } from '@/routes/transactions/entities/transaction.entity';
+import { AddConfirmationDtoValidationPipe } from '@/routes/transactions/pipes/add-confirmation.validation.pipe';
+import { PreviewTransactionDtoValidationPipe } from '@/routes/transactions/pipes/preview-transaction.validation.pipe';
+import { ProposeTransactionDtoValidationPipe } from '@/routes/transactions/pipes/propose-transaction.dto.validation.pipe';
+import { TransactionsService } from '@/routes/transactions/transactions.service';
+import { DeleteTransactionDtoValidationPipe } from '@/routes/transactions/pipes/delete-transaction.validation.pipe';
+import { DeleteTransactionDto } from '@/routes/transactions/entities/delete-transaction.dto.entity';
 
 @ApiTags('transactions')
 @Controller({
@@ -49,7 +52,10 @@ export class TransactionsController {
     @Param('chainId') chainId: string,
     @Param('id') id: string,
   ): Promise<TransactionDetails> {
-    return this.transactionsService.getById({ chainId, txId: id });
+    return this.transactionsService.getById({
+      chainId,
+      txId: id,
+    });
   }
 
   @ApiOkResponse({ type: MultisigTransactionPage })
@@ -71,7 +77,8 @@ export class TransactionsController {
     @Query('to') to?: string,
     @Query('value') value?: string,
     @Query('nonce') nonce?: string,
-    @Query('executed') executed?: boolean,
+    @Query('executed', new ParseBoolPipe({ optional: true }))
+    executed?: boolean,
   ): Promise<Partial<Page<MultisigTransaction>>> {
     return this.transactionsService.getMultisigTransactions({
       chainId,
@@ -84,6 +91,20 @@ export class TransactionsController {
       value,
       nonce,
       executed,
+    });
+  }
+
+  @Delete('chains/:chainId/transactions/:safeTxHash')
+  async deleteTransaction(
+    @Param('chainId') chainId: string,
+    @Param('safeTxHash') safeTxHash: string,
+    @Body(DeleteTransactionDtoValidationPipe)
+    deleteTransactionDto: DeleteTransactionDto,
+  ): Promise<void> {
+    return this.transactionsService.deleteTransaction({
+      chainId,
+      safeTxHash,
+      signature: deleteTransactionDto.signature,
     });
   }
 
@@ -177,15 +198,12 @@ export class TransactionsController {
   @ApiOkResponse({ type: QueuedItemPage })
   @Get('chains/:chainId/safes/:safeAddress/transactions/queued')
   @ApiQuery({ name: 'cursor', required: false, type: String })
-  @ApiQuery({ name: 'timezone_offset', required: false, type: String })
   @ApiQuery({ name: 'trusted', required: false, type: Boolean })
   async getTransactionQueue(
     @Param('chainId') chainId: string,
     @RouteUrlDecorator() routeUrl: URL,
     @Param('safeAddress') safeAddress: string,
     @PaginationDataDecorator() paginationData: PaginationData,
-    @Query('timezone_offset', new DefaultValuePipe(0), ParseIntPipe)
-    timezoneOffset: number,
     @Query('trusted', new DefaultValuePipe(true), ParseBoolPipe)
     trusted: boolean,
   ): Promise<Partial<Page<QueuedItem>>> {
@@ -195,7 +213,6 @@ export class TransactionsController {
       safeAddress,
       paginationData,
       trusted,
-      timezoneOffset,
     });
   }
 
@@ -209,14 +226,17 @@ export class TransactionsController {
     @Param('safeAddress') safeAddress: string,
     @PaginationDataDecorator() paginationData: PaginationData,
     @Query('timezone_offset', new DefaultValuePipe(0), ParseIntPipe)
-    timezoneOffset: number,
+    timezoneOffsetMs: number,
+    @Query('trusted', new DefaultValuePipe(true), ParseBoolPipe)
+    trusted: boolean,
   ): Promise<Partial<TransactionItemPage>> {
     return this.transactionsService.getTransactionHistory({
       chainId,
       routeUrl,
       safeAddress,
       paginationData,
-      timezoneOffset,
+      timezoneOffsetMs,
+      onlyTrusted: trusted,
     });
   }
 

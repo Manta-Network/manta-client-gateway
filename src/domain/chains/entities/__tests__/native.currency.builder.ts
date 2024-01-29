@@ -1,9 +1,9 @@
 import { faker } from '@faker-js/faker';
-import { NativeCurrency } from '../native.currency.entity';
 import { Builder, IBuilder } from '@/__tests__/builder';
+import { NativeCurrency } from '@/domain/chains/entities/native.currency.entity';
 
 export function nativeCurrencyBuilder(): IBuilder<NativeCurrency> {
-  return Builder.new<NativeCurrency>()
+  return new Builder<NativeCurrency>()
     .with('name', faker.finance.currencyName())
     .with('symbol', faker.finance.currencySymbol())
     .with('decimals', 18)

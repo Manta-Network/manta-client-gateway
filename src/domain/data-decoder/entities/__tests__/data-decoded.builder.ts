@@ -1,9 +1,12 @@
 import { faker } from '@faker-js/faker';
-import { DataDecoded, DataDecodedParameter } from '../data-decoded.entity';
 import { Builder, IBuilder } from '@/__tests__/builder';
+import {
+  DataDecoded,
+  DataDecodedParameter,
+} from '@/domain/data-decoder/entities/data-decoded.entity';
 
 export function dataDecodedBuilder(): IBuilder<DataDecoded> {
-  return Builder.new<DataDecoded>()
+  return new Builder<DataDecoded>()
     .with('method', faker.string.alphanumeric())
     .with(
       'parameters',
@@ -14,7 +17,7 @@ export function dataDecodedBuilder(): IBuilder<DataDecoded> {
 }
 
 export function dataDecodedParameterBuilder(): IBuilder<DataDecodedParameter> {
-  return Builder.new<DataDecodedParameter>()
+  return new Builder<DataDecodedParameter>()
     .with('name', faker.string.alphanumeric())
     .with('type', faker.string.alphanumeric())
     .with('value', faker.string.alphanumeric())

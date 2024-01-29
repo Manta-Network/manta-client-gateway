@@ -5,27 +5,27 @@ import {
   getSchemaPath,
 } from '@nestjs/swagger';
 import { DeviceType } from '@/domain/notifications/entities/device.entity';
-import { SafeRegistration } from './safe-registration.entity';
+import { SafeRegistration } from '@/routes/notifications/entities/safe-registration.entity';
 
 @ApiExtraModels(SafeRegistration)
 export class RegisterDeviceDto {
   @ApiPropertyOptional({ type: String, nullable: true })
   uuid?: string;
   @ApiProperty()
-  cloudMessagingToken: string;
+  cloudMessagingToken!: string;
   @ApiProperty()
-  buildNumber: string;
+  buildNumber!: string;
   @ApiProperty()
-  bundle: string;
+  bundle!: string;
   @ApiProperty()
-  deviceType: DeviceType;
+  deviceType!: DeviceType;
   @ApiProperty()
-  version: string;
+  version!: string;
   @ApiPropertyOptional({ type: String, nullable: true })
   timestamp?: string;
   @ApiProperty({
     type: 'array',
     items: { $ref: getSchemaPath(SafeRegistration) },
   })
-  safeRegistrations: SafeRegistration[];
+  safeRegistrations!: SafeRegistration[];
 }

@@ -1,10 +1,9 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { IConfigurationService } from './configuration.service.interface';
-import { NestConfigurationService } from './nest.configuration.service';
-import { validate } from './configuration.validator';
-import configuration from './entities/configuration';
 import { ConfigFactory } from '@nestjs/config/dist/interfaces/config-factory.interface';
+import { IConfigurationService } from '@/config/configuration.service.interface';
+import { validate } from '@/config/configuration.validator';
+import { NestConfigurationService } from '@/config/nest.configuration.service';
 
 /**
  * A {@link Global} Module which provides local configuration support via {@link IConfigurationService}
@@ -16,7 +15,7 @@ import { ConfigFactory } from '@nestjs/config/dist/interfaces/config-factory.int
 @Global()
 @Module({})
 export class ConfigurationModule {
-  static register(configFactory: ConfigFactory = configuration): DynamicModule {
+  static register(configFactory: ConfigFactory): DynamicModule {
     return {
       module: ConfigurationModule,
       imports: [

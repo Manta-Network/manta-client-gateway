@@ -5,24 +5,20 @@ import {
   isERC721Transfer,
   isNativeTokenTransfer,
   Transfer as DomainTransfer,
-} from '../../../../domain/safe/entities/transfer.entity';
+} from '@/domain/safe/entities/transfer.entity';
 import { Token } from '@/domain/tokens/entities/token.entity';
 import { TokenRepository } from '@/domain/tokens/token.repository';
 import { ITokenRepository } from '@/domain/tokens/token.repository.interface';
-import { AddressInfoHelper } from '../../../common/address-info/address-info.helper';
-import { TransferTransactionInfo } from '../../entities/transfer-transaction-info.entity';
-import { Erc20Transfer } from '../../entities/transfers/erc20-transfer.entity';
-import { Erc721Transfer } from '../../entities/transfers/erc721-transfer.entity';
-import { NativeCoinTransfer } from '../../entities/transfers/native-coin-transfer.entity';
-import { Transfer } from '../../entities/transfers/transfer.entity';
-import { getTransferDirection } from '../common/transfer-direction.helper';
+import { AddressInfoHelper } from '@/routes/common/address-info/address-info.helper';
+import { TransferTransactionInfo } from '@/routes/transactions/entities/transfer-transaction-info.entity';
+import { Erc20Transfer } from '@/routes/transactions/entities/transfers/erc20-transfer.entity';
+import { Erc721Transfer } from '@/routes/transactions/entities/transfers/erc721-transfer.entity';
+import { NativeCoinTransfer } from '@/routes/transactions/entities/transfers/native-coin-transfer.entity';
+import { getTransferDirection } from '@/routes/transactions/mappers/common/transfer-direction.helper';
+import { Transfer } from '@/routes/transactions/entities/transfers/transfer.entity';
 
 @Injectable()
 export class TransferInfoMapper {
-  private static readonly ERC20_TRANSFER = 'ERC20_TRANSFER';
-  private static readonly ERC721_TRANSFER = 'ERC721_TRANSFER';
-  private static readonly ETHER_TRANSFER = 'ETHER_TRANSFER';
-
   constructor(
     @Inject(ITokenRepository) private readonly tokenRepository: TokenRepository,
     private readonly addressInfoHelper: AddressInfoHelper,
@@ -73,6 +69,7 @@ export class TransferInfoMapper {
         token?.symbol,
         token?.logoUri,
         token?.decimals,
+        token?.trusted,
       );
     } else if (isERC721Transfer(domainTransfer)) {
       const { tokenAddress, tokenId } = domainTransfer;
@@ -85,6 +82,7 @@ export class TransferInfoMapper {
         token?.name,
         token?.symbol,
         token?.logoUri,
+        token?.trusted,
       );
     } else if (isNativeTokenTransfer(domainTransfer)) {
       return new NativeCoinTransfer(domainTransfer.value);

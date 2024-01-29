@@ -1,5 +1,5 @@
-import { ICacheService } from '../cache.service.interface';
-import { CacheDir } from '../entities/cache-dir.entity';
+import { ICacheService } from '@/datasources/cache/cache.service.interface';
+import { CacheDir } from '@/datasources/cache/entities/cache-dir.entity';
 
 export class FakeCacheService implements ICacheService {
   private cache: Record<string, Record<string, any>> = {};
@@ -9,7 +9,7 @@ export class FakeCacheService implements ICacheService {
     return this.isReady ? Promise.resolve() : Promise.reject();
   }
 
-  setReadyState(isReady: boolean) {
+  setReadyState(isReady: boolean): void {
     this.isReady = isReady;
   }
 
@@ -17,12 +17,16 @@ export class FakeCacheService implements ICacheService {
     return Object.keys(this.cache).length;
   }
 
-  clear() {
+  clear(): void {
     this.cache = {};
   }
 
-  deleteByKey(key: string): Promise<number> {
+  async deleteByKey(key: string): Promise<number> {
     delete this.cache[key];
+    await this.set(
+      new CacheDir(`invalidationTimeMs:${key}`, ''),
+      Date.now().toString(),
+    );
     return Promise.resolve(1);
   }
 

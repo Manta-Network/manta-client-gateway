@@ -1,13 +1,12 @@
 import { faker } from '@faker-js/faker';
-import { random, range } from 'lodash';
 import { Builder, IBuilder } from '@/__tests__/builder';
-import { SafeApp } from '../safe-app.entity';
-import { safeAppAccessControlBuilder } from './safe-app-access-control.builder';
-import { safeAppProviderBuilder } from './safe-app-provider.builder';
-import { safeAppSocialProfileBuilder } from './safe-app-social-profile.builder';
+import { safeAppAccessControlBuilder } from '@/domain/safe-apps/entities/__tests__/safe-app-access-control.builder';
+import { safeAppProviderBuilder } from '@/domain/safe-apps/entities/__tests__/safe-app-provider.builder';
+import { safeAppSocialProfileBuilder } from '@/domain/safe-apps/entities/__tests__/safe-app-social-profile.builder';
+import { SafeApp } from '@/domain/safe-apps/entities/safe-app.entity';
 
 export function safeAppBuilder(): IBuilder<SafeApp> {
-  return Builder.new<SafeApp>()
+  return new Builder<SafeApp>()
     .with('id', faker.number.int())
     .with('url', faker.internet.url({ appendSlash: false }))
     .with('name', faker.word.sample())
@@ -21,6 +20,8 @@ export function safeAppBuilder(): IBuilder<SafeApp> {
     .with('developerWebsite', faker.internet.url({ appendSlash: false }))
     .with(
       'socialProfiles',
-      range(random(5)).map(() => safeAppSocialProfileBuilder().build()),
+      faker.helpers.multiple(() => safeAppSocialProfileBuilder().build(), {
+        count: { min: 0, max: 5 },
+      }),
     );
 }

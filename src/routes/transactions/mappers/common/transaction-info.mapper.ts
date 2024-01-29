@@ -1,29 +1,29 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { IConfigurationService } from '@/config/configuration.service.interface';
 import { ModuleTransaction } from '@/domain/safe/entities/module-transaction.entity';
 import { MultisigTransaction } from '@/domain/safe/entities/multisig-transaction.entity';
 import { Operation } from '@/domain/safe/entities/operation.entity';
 import { TokenRepository } from '@/domain/tokens/token.repository';
 import { ITokenRepository } from '@/domain/tokens/token.repository.interface';
-import { TokenType } from '../../../balances/entities/token-type.entity';
-import { SettingsChangeTransaction } from '../../entities/settings-change-transaction.entity';
-import { TransactionInfo } from '../../entities/transaction-info.entity';
-import { CustomTransactionMapper } from './custom-transaction.mapper';
-import { DataDecodedParamHelper } from './data-decoded-param.helper';
-import { Erc20TransferMapper } from './erc20-transfer.mapper';
-import { Erc721TransferMapper } from './erc721-transfer.mapper';
-import { NativeCoinTransferMapper } from './native-coin-transfer.mapper';
-import { SettingsChangeMapper } from './settings-change.mapper';
-import { DataDecoded } from '../../../data-decode/entities/data-decoded.entity';
-import { DataDecodedParameter } from '../../../data-decode/entities/data-decoded-parameter.entity';
-import { HumanDescriptionMapper } from './human-description.mapper';
-import { IConfigurationService } from '@/config/configuration.service.interface';
+import { TokenType } from '@/routes/balances/entities/token-type.entity';
+import { DataDecodedParameter } from '@/routes/data-decode/entities/data-decoded-parameter.entity';
+import { DataDecoded } from '@/routes/data-decode/entities/data-decoded.entity';
+import { SettingsChangeTransaction } from '@/routes/transactions/entities/settings-change-transaction.entity';
+import { TransactionInfo } from '@/routes/transactions/entities/transaction-info.entity';
+import { CustomTransactionMapper } from '@/routes/transactions/mappers/common/custom-transaction.mapper';
+import { DataDecodedParamHelper } from '@/routes/transactions/mappers/common/data-decoded-param.helper';
+import { Erc20TransferMapper } from '@/routes/transactions/mappers/common/erc20-transfer.mapper';
+import { Erc721TransferMapper } from '@/routes/transactions/mappers/common/erc721-transfer.mapper';
+import { HumanDescriptionMapper } from '@/routes/transactions/mappers/common/human-description.mapper';
+import { NativeCoinTransferMapper } from '@/routes/transactions/mappers/common/native-coin-transfer.mapper';
+import { SettingsChangeMapper } from '@/routes/transactions/mappers/common/settings-change.mapper';
 
 @Injectable()
 export class MultisigTransactionInfoMapper {
   private readonly TRANSFER_METHOD = 'transfer';
   private readonly TRANSFER_FROM_METHOD = 'transferFrom';
   private readonly SAFE_TRANSFER_FROM_METHOD = 'safeTransferFrom';
-  private readonly isHumanDescriptionEnabled: boolean;
+  private readonly isRichFragmentsEnabled: boolean;
 
   private readonly ERC20_TRANSFER_METHODS = [
     this.TRANSFER_METHOD,
@@ -48,8 +48,8 @@ export class MultisigTransactionInfoMapper {
     private readonly erc721TransferMapper: Erc721TransferMapper,
     private readonly humanDescriptionMapper: HumanDescriptionMapper,
   ) {
-    this.isHumanDescriptionEnabled = this.configurationService.getOrThrow(
-      'features.humanDescription',
+    this.isRichFragmentsEnabled = this.configurationService.getOrThrow(
+      'features.richFragments',
     );
   }
 
@@ -65,16 +65,20 @@ export class MultisigTransactionInfoMapper {
     const dataSize =
       dataByteLength >= 2 ? Math.floor((dataByteLength - 2) / 2) : 0;
 
-    const richDecodedInfo = this.isHumanDescriptionEnabled
-      ? await this.humanDescriptionMapper.mapRichDecodedInfo(
-          transaction,
-          chainId,
-        )
-      : null;
+    const richDecodedInfo =
+      await this.humanDescriptionMapper.mapRichDecodedInfo(
+        transaction,
+        chainId,
+      );
 
-    const humanDescription = this.isHumanDescriptionEnabled
-      ? this.humanDescriptionMapper.mapHumanDescription(richDecodedInfo)
-      : null;
+    const humanDescription =
+      this.humanDescriptionMapper.mapHumanDescription(richDecodedInfo);
+
+    // If the rich fragment feature is disabled, we set it as undefined.
+    // Undefined properties are not rendered on the response
+    const richDecodedInfoApiProperty = this.isRichFragmentsEnabled
+      ? richDecodedInfo
+      : undefined;
 
     if (this.isCustomTransaction(value, dataSize, transaction.operation)) {
       return await this.customTransactionMapper.mapCustomTransaction(
@@ -82,7 +86,7 @@ export class MultisigTransactionInfoMapper {
         dataSize,
         chainId,
         humanDescription,
-        richDecodedInfo,
+        richDecodedInfoApiProperty,
       );
     }
 
@@ -91,7 +95,7 @@ export class MultisigTransactionInfoMapper {
         chainId,
         transaction,
         humanDescription,
-        richDecodedInfo,
+        richDecodedInfoApiProperty,
       );
     }
 
@@ -122,7 +126,7 @@ export class MultisigTransactionInfoMapper {
         new DataDecoded(transaction.dataDecoded.method, dataDecodedParameters),
         settingsInfo,
         humanDescription,
-        richDecodedInfo,
+        richDecodedInfoApiProperty,
       );
     }
 
@@ -138,7 +142,7 @@ export class MultisigTransactionInfoMapper {
             chainId,
             transaction,
             humanDescription,
-            richDecodedInfo,
+            richDecodedInfoApiProperty,
           );
         case TokenType.Erc721:
           return this.erc721TransferMapper.mapErc721Transfer(
@@ -146,7 +150,7 @@ export class MultisigTransactionInfoMapper {
             chainId,
             transaction,
             humanDescription,
-            richDecodedInfo,
+            richDecodedInfoApiProperty,
           );
       }
     }
@@ -156,7 +160,7 @@ export class MultisigTransactionInfoMapper {
       dataSize,
       chainId,
       humanDescription,
-      richDecodedInfo,
+      richDecodedInfoApiProperty,
     );
   }
 

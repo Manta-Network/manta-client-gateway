@@ -1,17 +1,23 @@
-import { Controller, Get, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  INestApplication,
+} from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TestAppProvider } from '@/__tests__/test-app.provider';
 import * as request from 'supertest';
 import { APP_FILTER } from '@nestjs/core';
-import { GlobalErrorFilter } from './global-error.filter';
 import { TestLoggingModule } from '@/logging/__tests__/test.logging.module';
 import { ConfigurationModule } from '@/config/configuration.module';
-import configuration from '../../../config/entities/__tests__/configuration';
+import configuration from '@/config/entities/__tests__/configuration';
+import { GlobalErrorFilter } from '@/routes/common/filters/global-error.filter';
 
 @Controller({})
 class TestController {
   @Get('http-exception')
-  async httpException() {
+  async httpException(): Promise<void> {
     throw new HttpException(
       { message: 'Some http exception' },
       HttpStatus.BAD_GATEWAY,
@@ -19,13 +25,13 @@ class TestController {
   }
 
   @Get('non-http-exception')
-  async nonHttpException() {
+  async nonHttpException(): Promise<void> {
     throw new Error('Some random error');
   }
 }
 
 describe('GlobalErrorFilter tests', () => {
-  let app;
+  let app: INestApplication;
   beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [TestLoggingModule, ConfigurationModule.register(configuration)],

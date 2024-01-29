@@ -1,12 +1,17 @@
-import { HttpStatus, Injectable, PipeTransform } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  PipeTransform,
+} from '@nestjs/common';
 import { ValidateFunction } from 'ajv';
-import { GenericValidator } from '@/validation/providers/generic.validator';
-import { JsonSchemaService } from '@/validation/providers/json-schema.service';
-import { DeleteSafeDelegateDto } from '../entities/delete-safe-delegate.dto.entity';
+import { DeleteSafeDelegateDto } from '@/routes/delegates/entities/delete-safe-delegate.dto.entity';
 import {
   DELETE_SAFE_DELEGATE_DTO_SCHEMA_ID,
   deleteSafeDelegateDtoSchema,
-} from '../entities/schemas/delete-safe-delegate.dto.schema';
+} from '@/routes/delegates/entities/schemas/delete-safe-delegate.dto.schema';
+import { GenericValidator } from '@/validation/providers/generic.validator';
+import { JsonSchemaService } from '@/validation/providers/json-schema.service';
 
 @Injectable()
 export class DeleteSafeDelegateDtoValidationPipe
@@ -27,7 +32,9 @@ export class DeleteSafeDelegateDtoValidationPipe
     try {
       return this.genericValidator.validate(this.isValid, data);
     } catch (err) {
-      err.status = HttpStatus.BAD_REQUEST;
+      if (err instanceof HttpException) {
+        throw new HttpException(err.getResponse(), HttpStatus.BAD_REQUEST);
+      }
       throw err;
     }
   }

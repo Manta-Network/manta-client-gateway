@@ -1,24 +1,24 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { isArray, isEmpty } from 'lodash';
+import { isEmpty } from 'lodash';
 import { ContractsRepository } from '@/domain/contracts/contracts.repository';
 import { IContractsRepository } from '@/domain/contracts/contracts.repository.interface';
 import {
   DELEGATE_OPERATION,
   Operation,
 } from '@/domain/safe/entities/operation.entity';
-import { AddressInfoHelper } from '../../../common/address-info/address-info.helper';
-import { NULL_ADDRESS } from '../../../common/constants';
-import { AddressInfo } from '../../../common/entities/address-info.entity';
-import { Contract } from '../../../contracts/entities/contract.entity';
-import { DataDecoded } from '../../../data-decode/entities/data-decoded.entity';
+import { Contract } from '@/domain/contracts/entities/contract.entity';
+import { DataDecoded } from '@/domain/data-decoder/entities/data-decoded.entity';
+import { AddressInfoHelper } from '@/routes/common/address-info/address-info.helper';
+import { NULL_ADDRESS } from '@/routes/common/constants';
 import {
-  ADDRESS_PARAMETER_TYPE,
   MULTI_SEND_METHOD_NAME,
   TRANSACTIONS_PARAMETER_NAME,
-} from '../../constants';
-import { PreviewTransactionDto } from '../../entities/preview-transaction.dto.entity';
-import { TransactionData } from '../../entities/transaction-data.entity';
-import { DataDecodedParamHelper } from './data-decoded-param.helper';
+  ADDRESS_PARAMETER_TYPE,
+} from '@/routes/transactions/constants';
+import { PreviewTransactionDto } from '@/routes/transactions/entities/preview-transaction.dto.entity';
+import { TransactionData } from '@/routes/transactions/entities/transaction-data.entity';
+import { DataDecodedParamHelper } from '@/routes/transactions/mappers/common/data-decoded-param.helper';
+import { AddressInfo } from '@/routes/common/entities/address-info.entity';
 
 @Injectable()
 export class TransactionDataMapper {
@@ -110,7 +110,8 @@ export class TransactionDataMapper {
     chainId: string,
     dataDecoded: DataDecoded | null,
   ): Promise<Record<string, AddressInfo>> {
-    if (dataDecoded === null || !isArray(dataDecoded.parameters)) return {};
+    if (dataDecoded === null || !Array.isArray(dataDecoded.parameters))
+      return {};
     const { method, parameters } = dataDecoded;
     const promises: Promise<(AddressInfo | null)[] | AddressInfo | null>[] = [];
 
@@ -148,7 +149,7 @@ export class TransactionDataMapper {
     chainId: string,
     valueDecoded: unknown,
   ): Promise<(AddressInfo | null)[]> {
-    if (!isArray(valueDecoded)) return [];
+    if (!Array.isArray(valueDecoded)) return [];
     const promises: Promise<AddressInfo | null>[] = [];
 
     for (const transaction of valueDecoded) {
