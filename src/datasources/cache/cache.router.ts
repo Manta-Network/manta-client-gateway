@@ -23,6 +23,7 @@ export class CacheRouter {
   private static readonly SAFE_KEY = 'safe';
   private static readonly SINGLETONS_KEY = 'singletons';
   private static readonly BALANCES_KEY = 'balances';
+  private static readonly VALK_BALANCES_KEY = 'valk_balances';
   private static readonly TOKEN_KEY = 'token';
   private static readonly TOKEN_PRICE_KEY = 'token_price';
   private static readonly TOKENS_KEY = 'tokens';
@@ -48,6 +49,21 @@ export class CacheRouter {
     );
   }
 
+  // TODO: remove this prefixed key if eventually only one balances provider is used
+  static getValkBalancesCacheKey(args: {
+    chainId: string;
+    safeAddress: string;
+  }): string {
+    return `${args.chainId}_${CacheRouter.VALK_BALANCES_KEY}_${args.safeAddress}`;
+  }
+
+  static getValkBalancesCacheDir(args: {
+    chainId: string;
+    safeAddress: string;
+  }): CacheDir {
+    return new CacheDir(CacheRouter.getValkBalancesCacheKey(args), '');
+  }
+
   static getSafeCacheDir(args: {
     chainId: string;
     safeAddress: string;
@@ -70,10 +86,6 @@ export class CacheRouter {
       `${args.chainId}_${CacheRouter.CONTRACT_KEY}_${args.contractAddress}`,
       '',
     );
-  }
-
-  static getContractsCachePattern(): string {
-    return `*_${CacheRouter.CONTRACT_KEY}_*`;
   }
 
   static getBackboneCacheDir(chainId: string): CacheDir {
@@ -305,10 +317,6 @@ export class CacheRouter {
     );
   }
 
-  static getTokensCachePattern(chainId: string): string {
-    return `${chainId}_${CacheRouter.TOKEN_KEY}_*`;
-  }
-
   static getSafesByOwnerCacheDir(args: {
     chainId: string;
     ownerAddress: string;
@@ -374,10 +382,6 @@ export class CacheRouter {
     return new CacheDir(CacheRouter.getChainCacheKey(chainId), '');
   }
 
-  static getChainsCachePattern(): string {
-    return `*_${CacheRouter.CHAIN_KEY}`;
-  }
-
   static getSafeAppsKey(chainId: string): string {
     return `${chainId}_${CacheRouter.SAFE_APPS_KEY}`;
   }
@@ -391,10 +395,6 @@ export class CacheRouter {
       `${args.chainId}_${CacheRouter.SAFE_APPS_KEY}`,
       `${args.clientUrl}_${args.url}`,
     );
-  }
-
-  static getSafeAppsCachePattern(): string {
-    return `*_${CacheRouter.SAFE_APPS_KEY}`;
   }
 
   static getNativeCoinPriceCacheDir(args: {

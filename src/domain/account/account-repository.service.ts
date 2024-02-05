@@ -14,7 +14,10 @@ import { InvalidVerificationCodeError } from '@/domain/account/errors/invalid-ve
 import { EmailEditMatchesError } from '@/domain/account/errors/email-edit-matches.error';
 import { IEmailApi } from '@/domain/interfaces/email-api.interface';
 import * as crypto from 'crypto';
-import { EditTimespanError } from '@/domain/account/errors/email-timespan.error';
+import { ISubscriptionRepository } from '@/domain/subscriptions/subscription.repository.interface';
+import { SubscriptionRepository } from '@/domain/subscriptions/subscription.repository';
+import { AccountDoesNotExistError } from '@/datasources/account/errors/account-does-not-exist.error';
+import { ILoggingService, LoggingService } from '@/logging/logging.interface';
 
 @Injectable()
 export class AccountRepository implements IAccountRepository {
@@ -28,6 +31,9 @@ export class AccountRepository implements IAccountRepository {
     @Inject(IConfigurationService)
     private readonly configurationService: IConfigurationService,
     @Inject(IEmailApi) private readonly emailApi: IEmailApi,
+    @Inject(ISubscriptionRepository)
+    private readonly subscriptionRepository: ISubscriptionRepository,
+    @Inject(LoggingService) private readonly loggingService: ILoggingService,
   ) {
     this.verificationCodeResendLockWindowMs =
       this.configurationService.getOrThrow(
@@ -64,6 +70,13 @@ export class AccountRepository implements IAccountRepository {
         signer: args.signer,
         codeGenerationDate: new Date(),
         unsubscriptionToken: crypto.randomUUID(),
+      });
+      // New account registrations should be subscribed to the Account Recovery category
+      await this.subscriptionRepository.subscribe({
+        chainId: args.chainId,
+        signer: args.signer,
+        safeAddress: args.safeAddress,
+        notificationTypeKey: SubscriptionRepository.CATEGORY_ACCOUNT_RECOVERY,
       });
       await this._sendEmailVerification({
         ...args,
@@ -162,11 +175,22 @@ export class AccountRepository implements IAccountRepository {
     safeAddress: string;
     signer: string;
   }): Promise<void> {
-    const account = await this.accountDataSource.getAccount(args);
-    await this.emailApi.deleteEmailAddress({
-      emailAddress: account.emailAddress.value,
-    });
-    await this.accountDataSource.deleteAccount(args);
+    try {
+      const account = await this.accountDataSource.getAccount(args);
+      // If there is an error deleting the email address,
+      // do not delete the respective account as we still need to get the email
+      // for future deletions requests
+      await this.emailApi.deleteEmailAddress({
+        emailAddress: account.emailAddress.value,
+      });
+      await this.accountDataSource.deleteAccount(args);
+    } catch (error) {
+      this.loggingService.warn(error);
+      // If there is no account, do not throw in order not to signal its existence
+      if (!(error instanceof AccountDoesNotExistError)) {
+        throw error;
+      }
+    }
   }
 
   async editEmail(args: {
@@ -177,20 +201,6 @@ export class AccountRepository implements IAccountRepository {
   }): Promise<void> {
     const newEmail = new EmailAddress(args.emailAddress);
     const currentAccount = await this.accountDataSource.getAccount(args);
-
-    // Prevent subsequent edit if verification code still valid
-    if (
-      currentAccount.verificationGeneratedOn &&
-      this._isEmailVerificationCodeValid(currentAccount)
-    ) {
-      const timespanMs =
-        Date.now() - currentAccount.verificationGeneratedOn.getTime();
-      throw new EditTimespanError({
-        ...args,
-        timespanMs,
-        lockWindowMs: this.verificationCodeResendLockWindowMs,
-      });
-    }
 
     if (newEmail.value === currentAccount.emailAddress.value) {
       throw new EmailEditMatchesError(args);

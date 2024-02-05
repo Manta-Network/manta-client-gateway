@@ -99,7 +99,7 @@ export class CacheFirstDataSource {
     const { key, field } = args.cacheDir;
     this.loggingService.debug({ type: 'cache_miss', key, field });
     const startTimeMs = Date.now();
-    const { data } = await this.networkService.get(
+    const { data } = await this.networkService.get<T>(
       args.url,
       args.networkRequest,
     );
@@ -155,7 +155,11 @@ export class CacheFirstDataSource {
   ): Promise<void> {
     return this.cacheService.set(
       cacheDir,
-      JSON.stringify(error),
+      JSON.stringify({
+        data: error.data,
+        response: { status: error.response.status },
+        url: error.url,
+      }),
       notFoundExpireTimeSeconds,
     );
   }
